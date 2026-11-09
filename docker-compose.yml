@@ -1,0 +1,65 @@
+services:
+  # id : admin mdp : admin
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: keycloak
+    depends_on:
+      - keycloakdb
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      KC_DB: mariadb
+      KC_DB_URL_HOST: keycloakdb
+      KC_DB_URL_DATABASE: keycloakdb
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: keycloak
+      KC_HOSTNAME: https://keycloak.orto.lan
+      KC_PROXY_HEADERS: xforwarded
+      KC_HTTP_ENABLED: "true"
+    ports:
+      - "8080:8080"
+    command: start-dev
+    networks:
+      my-ipvlan:
+        ipv4_address: 192.168.40.55
+
+  keycloakdb:
+    image: mariadb
+    container_name: keycloakdb
+    restart: always
+    environment:
+      MYSQL_DATABASE: 'keycloakdb'
+      MYSQL_USER: 'keycloak'
+      MYSQL_PASSWORD: 'keycloak'
+      MYSQL_ROOT_PASSWORD: 'keycloak'
+    volumes:
+      - mariadb_data:/var/lib/mysql
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+    networks:
+      my-ipvlan:
+        ipv4_address: 192.168.40.51
+
+  caddy:
+    image: caddy:latest
+    container_name: caddy_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      my-ipvlan:
+        ipv4_address: 192.168.40.111
+
+volumes:
+  mariadb_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  my-ipvlan:
+    external: true
+    name: "my-ipvlan"
